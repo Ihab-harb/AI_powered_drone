@@ -1,0 +1,88 @@
+<div class="dialog-container">
+    <h2 mat-dialog-title>Drone Cost Tracking</h2>
+  
+    <mat-dialog-content class="mat-typography" [formGroup]="budgetForm">
+      <!-- Budget Section -->
+      <div class="section">
+        <div class="section-title">Budget Overview</div>
+        <div class="form-row" formGroupName="budget">
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Expected Cost ($)</mat-label>
+            <input matInput type="number" formControlName="expectedCost">
+            <mat-error *ngIf="budgetForm.get('budget.expectedCost')?.hasError('min')">
+              Must be positive
+            </mat-error>
+          </mat-form-field>
+  
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Actual Cost ($)</mat-label>
+            <input matInput type="number" formControlName="actualCost">
+            <mat-error *ngIf="budgetForm.get('budget.actualCost')?.hasError('min')">
+              Must be positive
+            </mat-error>
+          </mat-form-field>
+        </div>
+  
+        <div class="form-row" formGroupName="budget">
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Maintenance Budget ($)</mat-label>
+            <input matInput type="number" formControlName="maintenanceBudget">
+            <mat-error *ngIf="budgetForm.get('budget.maintenanceBudget')?.hasError('min')">
+              Must be positive
+            </mat-error>
+          </mat-form-field>
+  
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Modification Budget ($)</mat-label>
+            <input matInput type="number" formControlName="modificationBudget">
+            <mat-error *ngIf="budgetForm.get('budget.modificationBudget')?.hasError('min')">
+              Must be positive
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+  
+      <!-- Time Tracking Section -->
+      <div class="section">
+        <div class="section-title">Time & Usage</div>
+        <div class="form-row" formGroupName="budget">
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Estimated Hours</mat-label>
+            <input matInput type="number" formControlName="estimatedHours">
+            <mat-error *ngIf="budgetForm.get('budget.estimatedHours')?.hasError('min')">
+              Must be positive
+            </mat-error>
+          </mat-form-field>
+  
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Actual Hours</mat-label>
+            <input matInput type="number" formControlName="actualHours">
+            <mat-error *ngIf="budgetForm.get('budget.actualHours')?.hasError('min')">
+              Must be positive
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+  
+      <!-- Additional Info -->
+      <div class="section">
+        <div class="section-title">Additional Information</div>
+        <div class="form-row full-width" formGroupName="budget">
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Notes</mat-label>
+            <textarea matInput formControlName="notes" rows="3"></textarea>
+          </mat-form-field>
+        </div>
+      </div>
+    </mat-dialog-content>
+  
+    <mat-dialog-actions>
+      <button mat-button (click)="cancel()">Cancel</button>
+      <button mat-raised-button 
+              color="primary" 
+              (click)="saveBudget()"
+              [disabled]="budgetForm.invalid">
+        Save Budget
+      </button>
+    </mat-dialog-actions>
+  </div>

@@ -1,0 +1,119 @@
+<h2 mat-dialog-title class="dialog-title">{{ isEditMode ? 'Edit Drone' : 'Add Drone' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="droneForm" class="drone-form">
+    <div class="form-row">
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Name</mat-label>
+        <input matInput formControlName="name" required>
+        <mat-error *ngIf="droneForm.get('name')?.hasError('required')">
+          Name is required
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Category</mat-label>
+        <mat-select formControlName="category" required>
+          <mat-option *ngFor="let category of droneCategories" [value]="category">
+            {{ category }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="droneForm.get('category')?.hasError('required')">
+          Category is required
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Battery (mAh)</mat-label>
+        <input matInput type="number" formControlName="batteryCapacity" required>
+        <mat-error *ngIf="droneForm.get('batteryCapacity')?.hasError('required')">
+          Battery capacity is required
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Voltage (V)</mat-label>
+        <input matInput type="number" step="0.1" formControlName="batteryVoltage" required>
+        <mat-error *ngIf="droneForm.get('batteryVoltage')?.hasError('required')">
+          Voltage is required
+        </mat-error>
+        <mat-error *ngIf="droneForm.get('batteryVoltage')?.hasError('min')">
+          Minimum 3.0V
+        </mat-error>
+        <mat-error *ngIf="droneForm.get('batteryVoltage')?.hasError('max')">
+          Maximum 25V
+        </mat-error>
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Weight (g)</mat-label>
+        <input matInput type="number" formControlName="weight" required>
+        <mat-error *ngIf="droneForm.get('weight')?.hasError('required')">
+          Weight is required
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Color</mat-label>
+        <input matInput formControlName="color">
+      </mat-form-field>
+    </div>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status" required>
+          <mat-option *ngFor="let status of statusOptions" [value]="status.value">
+            {{ status.viewValue }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="droneForm.get('status')?.hasError('required')">
+          Status is required
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>Assigned User</mat-label>
+        <mat-select formControlName="assignedUserId">
+          <mat-option value="">-- None --</mat-option>
+          <mat-option *ngFor="let user of users" [value]="user.uid">
+            {{ user.fullName || user.email }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" floatLabel="always" class="full-width">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="2"></textarea>
+    </mat-form-field>
+
+    <div class="image-upload">
+      <input type="file" accept="image/*" (change)="onFileSelected($event)" #fileInput style="display: none;">
+      <div class="image-upload-buttons">
+        <button mat-raised-button type="button" (click)="fileInput.click()" color="primary" class="compact-button">
+          <mat-icon>upload</mat-icon> {{ previewUrl ? 'Change Image' : 'Upload Image' }}
+        </button>
+        <button *ngIf="previewUrl" mat-raised-button type="button" (click)="removeImage()" color="warn" class="compact-button">
+          <mat-icon>delete</mat-icon> Remove
+        </button>
+      </div>
+      
+      <div class="image-preview" *ngIf="previewUrl">
+        <img [src]="previewUrl" alt="Drone preview">
+      </div>
+    </div>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" color="warn" class="compact-button">Cancel</button>
+  <button mat-raised-button (click)="save()" color="primary" class="compact-button" 
+          [disabled]="droneForm.invalid">
+    {{ isEditMode ? 'Update' : 'Save' }}
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,54 @@
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <h1 class="login-title">Nova Drone</h1>
+      <p class="login-subtitle">Enter your credentials to access your dashboard</p>
+    </div>
+    <div class="login-content">
+      <form (ngSubmit)="onLogin()" class="login-form">
+        <div class="form-group">
+          <label for="email" class="form-label">Email</label>
+          <div class="input-container">
+            <svg class="input-icon" viewBox="0 0 24 24">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <input 
+              id="email" 
+              type="email" 
+              class="form-input"
+              placeholder="drone.pilot@example.com"
+              [(ngModel)]="email"
+              name="email"
+              required
+            >
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-container">
+            <svg class="input-icon" viewBox="0 0 24 24">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <input 
+              id="password" 
+              type="password" 
+              class="form-input"
+              placeholder="••••••••"
+              [(ngModel)]="password"
+              name="password"
+              required
+            >
+          </div>
+        </div>
+        
+        <div class="error-message" *ngIf="message">{{ message }}</div>
+
+        <button type="submit" class="login-button">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

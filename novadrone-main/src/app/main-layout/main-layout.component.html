@@ -1,0 +1,71 @@
+<div class="layout-container">
+  <aside class="sidebar" [class.closed]="!isSidebarOpen">
+    <div class="sidebar-header">
+      <h3 class="brand-text">Nova Drone</h3>
+      <button class="sidebar-toggle" (click)="toggleSidebar()">
+        <div class="hamburger-icon">
+          <span class="line top"></span>
+          <span class="line middle"></span>
+          <span class="line bottom"></span>
+        </div>
+      </button>
+    </div>
+    
+    <nav class="sidebar-nav">
+      <ul>
+        <li *ngIf="userRole !== 'pilot'">
+          <a routerLink="/dashboard" routerLinkActive="active">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+            </svg>
+            <span>Dashboard</span>
+          </a>
+        </li>
+
+        <li>
+          <a routerLink="/drones" routerLinkActive="active">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M12.71 11.29a1 1 0 0 0-1.42 0l-3 3a1 1 0 1 0 1.42 1.42l3-3a1 1 0 0 0 0-1.42zM21 16v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1zm-2-8a1 1 0 0 1-1 1H6a1 1 0 0 1 0-2h12a1 1 0 0 1 1 1zm0-4a1 1 0 0 1-1 1H6a1 1 0 0 1 0-2h12a1 1 0 0 1 1 1z"/>
+            </svg>
+            <span>Drones</span>
+          </a>
+        </li>
+
+        <li *ngIf="userRole !== 'pilot'">
+          <a routerLink="/trips" routerLinkActive="active">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span>Trips</span>
+          </a>
+        </li>
+
+        <li *ngIf="userRole !== 'pilot'">
+          <a routerLink="/users" routerLinkActive="active">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="8.5" cy="7" r="4"></circle>
+              <path d="M20 8v6m3-3h-6"></path>
+            </svg>
+            <span>Users</span>
+          </a>
+        </li>
+
+        <li *ngIf="currentUser">
+          <a (click)="logout()">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M16 17v-3H9v-4h7V7l5 5-5 5zM14 2a2 2 0 0 1 2 2v2h-2V4H5v16h9v-2h2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9z"/>
+            </svg>
+            <span>Logout</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <div class="content-wrapper" [class.sidebar-closed]="!isSidebarOpen">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

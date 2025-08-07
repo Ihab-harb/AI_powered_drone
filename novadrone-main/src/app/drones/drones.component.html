@@ -1,0 +1,99 @@
+<div class="main-content">
+  <div class="header">
+    <h1>{{ isPilot ? 'My Drones' : 'All Drones' }}</h1>
+    <button *ngIf="!isPilot" 
+            mat-raised-button 
+            color="primary" 
+            (click)="openDroneDialog()" 
+            class="add-drone-btn">
+      <mat-icon>add</mat-icon>
+      <span>Add Drone</span>
+    </button>
+  </div>
+
+  <mat-progress-bar *ngIf="isLoading" mode="indeterminate"></mat-progress-bar>
+
+  <div class="drone-grid">
+    <ng-container *ngIf="!isLoading">
+      <mat-card *ngFor="let drone of drones" class="drone-card">
+        <div class="image-container" [class.no-image]="!drone.imageBase64">
+          <img *ngIf="drone.imageBase64" 
+               [src]="drone.imageBase64" 
+               alt="{{drone.name}}"
+               (error)="handleImageError($event)">
+          <mat-icon *ngIf="!drone.imageBase64">photo_camera</mat-icon>
+        </div>
+
+        <div class="card-content">
+          <h3 class="drone-title">{{ drone.name || 'Unnamed Drone' }}</h3>
+          
+          <div class="drone-details">
+            <div class="detail-row">
+              <span class="detail-label">Category:</span>
+              <span>{{ drone.category || 'No category' }}</span>
+            </div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Battery:</span>
+              <span>{{ drone.batteryCapacity || 0 }} mAh</span>
+            </div>
+            
+            <div class="detail-row">
+              <span class="detail-label">Weight:</span>
+              <span>{{ drone.weight || 0 }} grams</span>
+            </div>
+          </div>
+
+          <p class="drone-description" *ngIf="drone.description">
+            {{ drone.description }}
+          </p>
+        </div>
+
+        <div class="card-actions">
+          <button mat-icon-button 
+                  color="primary" 
+                  (click)="generatePdfReport(drone)" 
+                  matTooltip="Download PDF Report"
+                  aria-label="Download PDF Report">
+            <mat-icon>picture_as_pdf</mat-icon>
+          </button>
+          
+          <button *ngIf="!isPilot" mat-icon-button 
+                  color="accent" 
+                  (click)="openBudgetDialog(drone)" 
+                  matTooltip="Budget Details"
+                  aria-label="Budget Details">
+            <mat-icon>attach_money</mat-icon>
+          </button>
+          
+          <button *ngIf="!isPilot" mat-icon-button 
+                  (click)="openDroneDialog(drone)" 
+                  matTooltip="Edit drone"
+                  aria-label="Edit drone">
+            <mat-icon>edit</mat-icon>
+          </button>
+          
+          <button *ngIf="!isPilot" mat-icon-button 
+                  color="warn" 
+                  (click)="deleteDrone(drone.id)" 
+                  matTooltip="Delete drone"
+                  aria-label="Delete drone">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </mat-card>
+
+      <div *ngIf="drones.length === 0" class="no-drones-message">
+        <mat-icon class="no-drones-icon">devices_other</mat-icon>
+        <h3>No drones found</h3>
+        <p *ngIf="isPilot">You haven't been assigned any drones yet</p>
+        <button *ngIf="!isPilot" 
+                mat-raised-button 
+                color="primary" 
+                (click)="openDroneDialog()">
+          Add Your First Drone
+        </button>
+      </div>
+    </ng-container>
+  </div>
+</div>

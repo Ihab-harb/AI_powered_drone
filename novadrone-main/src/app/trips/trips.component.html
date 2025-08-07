@@ -1,0 +1,65 @@
+<div class="main-content">
+  <div class="page-spacing-container">
+    <div class="header-container">
+      <h1 class="page-title">Trip Management</h1>
+      <button mat-raised-button color="primary" (click)="openAddTripDialog()" class="add-trip-btn">
+        <mat-icon>add</mat-icon>
+        <span>Add Trip</span>
+      </button>
+    </div>
+
+    <mat-card class="table-card">
+      <div class="table-container">
+        <mat-table [dataSource]="trips" class="trip-table" matSort>
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <mat-header-cell *matHeaderCellDef mat-sort-header>Trip Name</mat-header-cell>
+            <mat-cell *matCellDef="let trip">{{ trip.name }}</mat-cell>
+          </ng-container>
+
+          <!-- Duration Column -->
+          <ng-container matColumnDef="durationMinutes">
+            <mat-header-cell *matHeaderCellDef mat-sort-header>Duration (min)</mat-header-cell>
+            <mat-cell *matCellDef="let trip">{{ trip.durationMinutes }}</mat-cell>
+          </ng-container>
+
+          <!-- Drone Column -->
+          <ng-container matColumnDef="drone">
+            <mat-header-cell *matHeaderCellDef mat-sort-header>Drone</mat-header-cell>
+            <mat-cell *matCellDef="let trip">{{ getDroneName(trip.droneId) }}</mat-cell>
+          </ng-container>
+
+          <!-- Status Column -->
+          <ng-container matColumnDef="hadCrashes">
+            <mat-header-cell *matHeaderCellDef mat-sort-header>Status</mat-header-cell>
+            <mat-cell *matCellDef="let trip">
+              <span class="status-badge" [class.success]="!trip.hadCrashes" [class.error]="trip.hadCrashes">
+                {{ trip.hadCrashes ? 'Had Issues' : 'Successful' }}
+              </span>
+            </mat-cell>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
+            <mat-cell *matCellDef="let trip">
+              <div class="actions-cell">
+                <button mat-icon-button (click)="editTrip(trip)" matTooltip="Edit" class="action-btn edit-btn">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button (click)="deleteTrip(trip.id)" matTooltip="Delete" class="action-btn delete-btn">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </mat-cell>
+          </ng-container>
+
+          <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+          <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+        </mat-table>
+      </div>
+
+      <mat-paginator [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons></mat-paginator>
+    </mat-card>
+  </div>
+</div>

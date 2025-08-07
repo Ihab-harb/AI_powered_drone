@@ -1,0 +1,112 @@
+.drone-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-row mat-form-field {
+  flex: 1;
+  font-size: 14px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.image-upload-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.image-preview {
+  margin-top: 8px;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.image-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+mat-dialog-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #eee;
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+mat-dialog-content {
+  padding: 0 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Form fields */
+.mat-mdc-form-field {
+  --mat-form-field-container-height: 44px;
+  --mat-form-field-container-vertical-padding: 10px;
+}
+
+.mat-mdc-text-field-wrapper {
+  height: 44px !important;
+}
+
+.mat-mdc-form-field-infix {
+  min-height: 44px;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.mat-mdc-input-element {
+  font-size: 14px !important;
+}
+
+/* Buttons */
+.mat-mdc-button-base {
+  --mdc-text-button-container-height: 40px;
+  --mdc-filled-button-container-height: 40px;
+  padding: 0 20px !important;
+}
+
+/* Dialog */
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  max-width: 600px !important;
+  min-width: 400px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  mat-dialog-content {
+    padding: 0 16px;
+  }
+  
+  .mat-mdc-dialog-container .mdc-dialog__surface {
+    min-width: 300px;
+    max-width: 90vw !important;
+  }
+}

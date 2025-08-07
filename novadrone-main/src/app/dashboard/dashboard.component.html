@@ -1,0 +1,31 @@
+<div class="dashboard-container">
+  <main class="main-content">
+    <h1>Drones Management Dashboard</h1>
+
+    <div *ngIf="isLoading" class="loading-container">
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      <p>Loading drone data...</p>
+    </div>
+
+    <div *ngIf="!isLoading" class="dashboard-widgets">
+      <div class="widget chart-widget">
+        <h2>Drone Status Distribution</h2>
+        <div class="chart-container">
+          <canvas #statusChart width="300" height="200"></canvas>
+        </div>
+      </div>
+      <div class="widget chart-widget">
+        <h2>Drone Categories</h2>
+        <div class="chart-container">
+          <canvas #categoryChart width="300" height="200"></canvas>
+        </div>
+      </div>
+      <div class="widget chart-widget">
+        <h2>Top 10 Drones by Flight Time</h2>
+        <div class="chart-container">
+          <canvas #flightTimeChart width="300" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
