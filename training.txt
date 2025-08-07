@@ -1,0 +1,54 @@
+!nvidia-smi
+
+!pip install ultralytics
+
+from ultralytics import YOLO
+
+
+import os
+HOME = os.getcwd()
+print(HOME)
+
+
+model = YOLO('yolov8n.pt')
+
+
+!pip install ultralytics==8.2.103 -q
+
+from IPython import display
+display.clear_output()
+
+import ultralytics
+ultralytics.checks()
+
+from ultralytics import YOLO
+
+from IPython.display import display, Image
+
+
+!pip install roboflow
+
+from roboflow import Roboflow
+rf = Roboflow(api_key="e1lBcjVhckNCPaqwVSSX")
+project = rf.workspace("drone-test-tz5hl").project("drone-detection-x2tcr")
+version = project.version(1)
+dataset = version.download("yolov8")
+
+
+
+from ultralytics import YOLO
+
+import os
+from IPython import get_ipython
+from IPython.display import display, Image, clear_output
+
+# clear the output using the directly imported function
+clear_output()
+
+# run the yolo checks using get_ipython().system()
+get_ipython().system('yolo mode=checks')
+
+
+!unzip {dataset.location} -d /content/Drone-detection-1
+
+!yolo task=detect mode=train model=yolov8n.pt data={dataset.location}/data.yaml epochs=20 imgsz=640
