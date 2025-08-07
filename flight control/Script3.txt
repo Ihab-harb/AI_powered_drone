@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+import RPi.GPIO as GPIO
+import pygame
+import time
+from threading import Lock
+
+# ===== CONFIGURATION =====
+ESC_PINS = [18, 19, 12, 13]  # [Motor1, Motor2, Motor3, Motor4]
+ESC_FREQ = 400                # PWM frequency (Hz)
+MIN_THROTTLE = 5              # Minimum throttle (%)
+MAX_THROTTLE = 100            # Maximum throttle (%)
+TAKEOFF_THROTTLE = 50         # Initial takeoff throttle (%)
+FLIGHT_DURATION = 10          # Default flight duration (sec)
+
+# ===== INITIALIZATION =====
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+# Initialize ESCs
+motor_lock = Lock()
+pwms = []
+for pin in ESC_PINS:
+    GPIO.setup(pin, GPIO.OUT)
+    pwm = GPIO.PWM(pin, ESC_FREQ)
+    pwm.start(0)
+    pwms.append(pwm)
+time.sleep(1)  # ESC init delay
+
+# Controller setup
+pygame.init()
+try:
+    controller = pygame.joystick.Joystick(0)
+    controller.init()
+    print(f"🟢 Controller connected: {controller.get_name()}")
+except:
+    print("🔴 Controller not found!")
+    for pwm in pwms:
+        pwm.stop()
+    GPIO.cleanup()
+    exit()
+
+# Flight state variables
+is_flying = False
+current_throttle = 0
+
+def set_motors_sync(throttle):
+    """Set all motors simultaneously with the same throttle value"""
+    with motor_lock:
+        for pwm in pwms:
+            pwm.ChangeDutyCycle(throttle)
+
+def smooth_throttle_change(target_throttle, duration=1.0):
+    """Gradually change throttle to avoid sudden jumps"""
+    global current_throttle
+    steps = 20
+    step_delay = duration / steps
+    increment = (target_throttle - current_throttle) / steps
+    
+    for _ in range(steps):
+        current_throttle += increment
+        set_motors_sync(current_throttle)
+        time.sleep(step_delay)
+    
+    current_throttle = target_throttle
+    set_motors_sync(current_throttle)
+
+def takeoff():
+    """Initiate drone takeoff sequence"""
+    global is_flying
+    if not is_flying:
+        print("🚀 Takeoff initiated...")
+        smooth_throttle_change(TAKEOFF_THROTTLE)
+        is_flying = True
+        print("🛫 Drone airborne!")
+
+def land():
+    """Initiate drone landing sequence"""
+    global is_flying
+    if is_flying:
+        print("🛬 Landing initiated...")
+        smooth_throttle_change(0)
+        is_flying = False
+        print("🟢 Drone landed safely")
+
+def emergency_stop():
+    """Immediately stop all motors"""
+    global is_flying, current_throttle
+    print("🛑 EMERGENCY STOP!")
+    set_motors_sync(0)
+    current_throttle = 0
+    is_flying = False
+
+def calibrate_esc():
+    """ESC calibration routine"""
+    print("\n🛠 ESC Calibration Mode")
+    set_motors_sync(100)
+    input("Disconnect battery, then press Enter...")
+    input("Connect battery, wait for beeps, then press Enter...")
+    set_motors_sync(0)
+    time.sleep(5)
+    print("✅ All ESCs calibrated\n")
+
+def test_motor(motor_id, duration=3):
+    """Test individual motor"""
+    print(f"\nTesting Motor {motor_id+1}...")
+    throttles = [0, 0, 0, 0]
+    throttles[motor_id] = TAKEOFF_THROTTLE
+    with motor_lock:
+        for pwm, throttle in zip(pwms, throttles):
+            pwm.ChangeDutyCycle(throttle)
+    time.sleep(duration)
+    with motor_lock:
+        for pwm in pwms:
+            pwm.ChangeDutyCycle(0)
+    print(f"Motor {motor_id+1} test complete")
+
+try:
+    print("\n🎮 Drone Control Menu:")
+    print("1-4: Test individual motors")
+    print("R1: Test all motors together")
+    print("R2: Takeoff/Land (hold for 1 second)")
+    print("L1: Emergency stop")
+    print("Share: Calibrate ESCs")
+    print("PS: Exit\n")
+
+    r2_pressed_time = 0
+    R2_HOLD_TIME = 1.0  # Seconds needed to hold R2 for takeoff/land
+
+    while True:
+        pygame.event.pump()
+        current_time = time.time()
+
+        # R2 button for takeoff/landing (hold for 1 second)
+        if controller.get_button(7):  # R2 button
+            if r2_pressed_time == 0:
+                r2_pressed_time = current_time
+            elif current_time - r2_pressed_time > R2_HOLD_TIME:
+                if is_flying:
+                    land()
+                else:
+                    takeoff()
+                r2_pressed_time = 0  # Reset after action
+                time.sleep(1)  # Prevent immediate retrigger
+        else:
+            r2_pressed_time = 0
+
+        # L1 button for emergency stop
+        if controller.get_button(4):  # L1 button
+            emergency_stop()
+            time.sleep(1)  # Debounce
+
+        # Individual motor tests
+        if controller.get_button(0): test_motor(0)  # X (Motor1)
+        if controller.get_button(1): test_motor(1)  # O (Motor2)
+        if controller.get_button(2): test_motor(2)  # △ (Motor3)
+        if controller.get_button(3): test_motor(3)  # □ (Motor4)
+
+        # All motors test
+        if controller.get_button(5):  # R1
+            print("\n🌀 Testing ALL Motors...")
+            set_motors_sync(TAKEOFF_THROTTLE)
+            time.sleep(3)
+            set_motors_sync(0)
+            print("All motors test complete")
+
+        # ESC calibration
+        if controller.get_button(8):  # Share
+            calibrate_esc()
+
+        # Exit
+        if controller.get_button(10):  # PS
+            if is_flying:
+                land()
+                time.sleep(2)
+            break
+
+
+        # Throttle control via right stick (Y axis)
+        if is_flying:
+            stick_y = -controller.get_axis(4)  # Right stick Y axis (-1 to 1)
+            new_throttle = TAKEOFF_THROTTLE + (stick_y * (MAX_THROTTLE - TAKEOFF_THROTTLE))
+            new_throttle = max(MIN_THROTTLE, min(MAX_THROTTLE, new_throttle))
+            if abs(new_throttle - current_throttle) > 2:  # Deadband
+                set_motors_sync(new_throttle)
+                current_throttle = new_throttle
+
+        time.sleep(0.05)
+
+except KeyboardInterrupt:
+    print("\nShutting down...")
+finally:
+    emergency_stop()
+    time.sleep(0.5)
+    for pwm in pwms:
+        pwm.stop()
+    GPIO.cleanup()
+    print("🔴 System OFF")

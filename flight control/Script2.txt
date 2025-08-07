@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+import RPi.GPIO as GPIO
+import pygame
+import time
+import math
+import os
+from collections import deque
+import subprocess
+
+# ===== CONFIGURATION =====
+ESC_PINS = [18, 19, 12, 13]  # [FrontLeft, FrontRight, RearRight, RearLeft]
+ESC_FREQ = 400                # PWM frequency (Hz)
+MIN_THROTTLE = 5              # Minimum throttle (%)
+MAX_THROTTLE = 100            # Maximum throttle (%)
+ARMING_DELAY = 3              # Time to wait for arming (seconds)
+
+# PID Constants (tune these for your drone)
+ROLL_KP = 0.5
+ROLL_KI = 0.01
+ROLL_KD = 0.1
+PITCH_KP = 0.5
+PITCH_KI = 0.01
+PITCH_KD = 0.1
+YAW_KP = 0.3
+YAW_KI = 0.01
+YAW_KD = 0.05
+
+# ===== INITIALIZATION =====
+# Set environment variable to fix XDG_RUNTIME_DIR error
+os.environ['XDG_RUNTIME_DIR'] = f'/tmp/runtime-{os.getuid()}'
+
+# Initialize GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+# Initialize ESCs
+pwms = []
+for pin in ESC_PINS:
+    GPIO.setup(pin, GPIO.OUT)
+    pwm = GPIO.PWM(pin, ESC_FREQ)
+    pwm.start(0)
+    pwms.append(pwm)
+time.sleep(1)  # ESC init delay
+
+def init_controller():
+    """Initialize the PS4 controller with proper error handling"""
+    try:
+        pygame.init()
+        try:
+            pygame.joystick.init()
+            
+            # Try to connect controller
+            if pygame.joystick.get_count() == 0:
+                print("🟠 No controllers found. Trying Bluetooth setup...")
+                try:
+                    # Replace with your controller's MAC address
+                    subprocess.run(["bluetoothctl", "connect", "00:00:00:00:00:00"], check=True)
+                    time.sleep(2)
+                    pygame.joystick.init()
+                except subprocess.CalledProcessError:
+                    print("🔴 Failed to connect controller via Bluetooth")
+                    return None
+            
+            controller = pygame.joystick.Joystick(0)
+            controller.init()
+            print(f"🟢 Controller connected: {controller.get_name()}")
+            return controller
+        except pygame.error as e:
+            print(f"🔴 Pygame joystick initialization failed: {str(e)}")
+            return None
+    except Exception as e:
+        print(f"🔴 General initialization error: {str(e)}")
+        return None
+
+# Flight control variables
+armed = False
+throttle = 0
+roll = 0
+pitch = 0
+yaw = 0
+flight_mode = "STABILIZE"  # "STABILIZE" or "ACRO"
+
+# PID variables
+roll_pid = {"integral": 0, "prev_error": 0, "time": time.time()}
+pitch_pid = {"integral": 0, "prev_error": 0, "time": time.time()}
+yaw_pid = {"integral": 0, "prev_error": 0, "time": time.time()}
+
+# Input smoothing
+stick_history = deque(maxlen=5)
+
+def map_value(value, in_min, in_max, out_min, out_max):
+    """Map a value from one range to another"""
+    return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+def constrain(value, min_val, max_val):
+    """Constrain a value between min and max"""
+    return max(min(value, max_val), min_val)
+
+def smooth_inputs(throttle, roll, pitch, yaw):
+    """Apply smoothing to stick inputs"""
+    stick_history.append((throttle, roll, pitch, yaw))
+    if len(stick_history) > 1:
+        return [sum(x)/len(x) for x in zip(*stick_history)]
+    return throttle, roll, pitch, yaw
+
+def calculate_pid(error, pid_dict, kp, ki, kd):
+    """Calculate PID output with anti-windup"""
+    now = time.time()
+    dt = now - pid_dict["time"]
+    pid_dict["time"] = now
+    
+    # Proportional
+    p = kp * error
+    
+    # Integral with anti-windup
+    pid_dict["integral"] += error * dt
+    pid_dict["integral"] = constrain(pid_dict["integral"], -100/ki, 100/ki)
+    i = ki * pid_dict["integral"]
+    
+    # Derivative
+    d = kd * (error - pid_dict["prev_error"]) / dt if dt > 0 else 0
+    pid_dict["prev_error"] = error
+    
+    return p + i + d
+
+def mix_motors(throttle, roll, pitch, yaw):
+    """Mix controls to individual motor outputs (X configuration)"""
+    front_left = throttle - roll - pitch + yaw
+    front_right = throttle + roll - pitch - yaw
+    rear_right = throttle + roll + pitch + yaw
+    rear_left = throttle - roll + pitch - yaw
+    
+    return [
+        constrain(front_left, MIN_THROTTLE, MAX_THROTTLE),
+        constrain(front_right, MIN_THROTTLE, MAX_THROTTLE),
+        constrain(rear_right, MIN_THROTTLE, MAX_THROTTLE),
+        constrain(rear_left, MIN_THROTTLE, MAX_THROTTLE)
+    ]
+
+def update_motors():
+    """Update motor outputs based on current controls"""
+    if not armed:
+        return
+    
+    # Get PID corrections
+    roll_corr = calculate_pid(roll, roll_pid, ROLL_KP, ROLL_KI, ROLL_KD)
+    pitch_corr = calculate_pid(pitch, pitch_pid, PITCH_KP, PITCH_KI, PITCH_KD)
+    yaw_corr = calculate_pid(yaw, yaw_pid, YAW_KP, YAW_KI, YAW_KD)
+    
+    # Mix controls and update motors
+    motor_outputs = mix_motors(throttle, roll_corr, pitch_corr, yaw_corr)
+    for i, output in enumerate(motor_outputs):
+        pwms[i].ChangeDutyCycle(output)
+
+def print_status():
+    """Print current flight status"""
+    os.system('clear')
+    print("=== QUADCOPTER FLIGHT CONTROL ===")
+    print(f"Status: {'🟢 ARMED' if armed else '🔴 DISARMED'}")
+    print(f"Mode: {flight_mode}")
+    print(f"Throttle: {throttle:.1f}% | Roll: {roll:.2f} | Pitch: {pitch:.2f} | Yaw: {yaw:.2f}")
+    print("\nControls:")
+    print("L Stick: Throttle (up/down) | Yaw (left/right)")
+    print("R Stick: Roll (left/right) | Pitch (up/down)")
+    print("△: Arm | X: Disarm | O: Toggle Mode")
+    print("Share: Calibrate | PS: Exit")
+
+def calibrate_esc():
+    """ESC calibration routine"""
+    global armed
+    armed = False
+    print("\n🛠 ESC Calibration Mode")
+    for i, pwm in enumerate(pwms):
+        print(f"Calibrating Motor {i+1}...")
+        pwm.ChangeDutyCycle(100)
+        input("Disconnect battery, then press Enter...")
+        input("Connect battery, wait for beeps, then press Enter...")
+        pwm.ChangeDutyCycle(0)
+        time.sleep(5)
+        print(f"Motor {i+1} calibrated!")
+    print("✅ All ESCs calibrated\n")
+
+def main_loop():
+    global armed, throttle, roll, pitch, yaw, flight_mode
+    
+    last_status_update = 0
+    controller = init_controller()
+    if not controller:
+        return
+    
+    print_status()
+    
+    while True:
+        try:
+            pygame.event.pump()
+            
+            # Get controller inputs with deadzone
+            throttle_stick = -constrain(controller.get_axis(1), -0.99, 0.99)  # Left stick Y
+            roll_stick = constrain(controller.get_axis(2), -0.99, 0.99)       # Right stick X
+            pitch_stick = -constrain(controller.get_axis(3), -0.99, 0.99)     # Right stick Y
+            yaw_stick = constrain(controller.get_axis(0), -0.99, 0.99)        # Left stick X
+            
+            # Apply smoothing
+            throttle_stick, roll_stick, pitch_stick, yaw_stick = smooth_inputs(
+                throttle_stick, roll_stick, pitch_stick, yaw_stick)
+            
+            # Update control values
+            if armed:
+                throttle = map_value(throttle_stick, -1, 1, MIN_THROTTLE, MAX_THROTTLE)
+                roll = roll_stick * (100 if flight_mode == "ACRO" else 30)  # Limit angle in stabilize mode
+                pitch = pitch_stick * (100 if flight_mode == "ACRO" else 30)
+                yaw = yaw_stick * 50
+            
+            # Handle buttons
+            if controller.get_button(0):  # X button - disarm
+                armed = False
+                for pwm in pwms:
+                    pwm.ChangeDutyCycle(0)
+                time.sleep(0.2)  # Debounce
+                
+            if controller.get_button(3):  # △ button - arm
+                if not armed:
+                    print("\n🟡 Arming sequence started...")
+                    for pwm in pwms:
+                        pwm.ChangeDutyCycle(MIN_THROTTLE)
+                    time.sleep(ARMING_DELAY)
+                    armed = True
+                    print("🟢 Armed and ready!")
+                time.sleep(0.2)
+                
+            if controller.get_button(1):  # O button - toggle mode
+                flight_mode = "ACRO" if flight_mode == "STABILIZE" else "STABILIZE"
+                print(f"\n🔄 Flight mode: {flight_mode}")
+                time.sleep(0.2)
+            
+            if controller.get_button(8):  # Share button - calibrate
+                calibrate_esc()
+                time.sleep(0.2)
+            
+            # Update motors
+            update_motors()
+            
+            # Status update (throttled to 2Hz)
+            if time.time() - last_status_update > 0.5:
+                print_status()
+                last_status_update = time.time()
+            
+            time.sleep(0.02)  # ~50Hz loop
+            
+        except pygame.error as e:
+            print(f"\n🔴 Controller error: {str(e)}")
+            print("Attempting to reconnect...")
+            controller = init_controller()
+            if not controller:
+                break
+            time.sleep(1)
+            
+        except KeyboardInterrupt:
+            break
+
+try:
+    print("\n🚀 Quadcopter Flight Control System Initialized")
+    main_loop()
+
+except Exception as e:
+    print(f"\n🔴 Unexpected error: {str(e)}")
+    
+finally:
+    print("\n🔴 Shutting down...")
+    for pwm in pwms:
+        pwm.ChangeDutyCycle(0)
+    time.sleep(1)
+    for pwm in pwms:
+        pwm.stop()
+    GPIO.cleanup()
+    pygame.quit()
+    print("System OFF")

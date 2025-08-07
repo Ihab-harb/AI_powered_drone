@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+import RPi.GPIO as GPIO
+import pygame
+import time
+
+# ===== CONFIGURATION =====
+ESC_PINS = [18, 19, 12, 13]  # [Motor1, Motor2, Motor3, Motor4]
+ESC_FREQ = 400                # PWM frequency (Hz)
+TEST_THROTTLE = 60            # Test speed (%)
+
+# ===== INITIALIZATION =====
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+# Initialize ESCs
+pwms = []
+for pin in ESC_PINS:
+    GPIO.setup(pin, GPIO.OUT)
+    pwm = GPIO.PWM(pin, ESC_FREQ)
+    pwm.start(0)
+    pwms.append(pwm)
+time.sleep(1)  # ESC init delay
+
+# Controller setup
+pygame.init()
+try:
+    controller = pygame.joystick.Joystick(0)
+    controller.init()
+    print(f"🟢 Controller connected: {controller.get_name()}")
+except:
+    print("🔴 Controller not found!")
+    for pwm in pwms:
+        pwm.stop()
+    GPIO.cleanup()
+    exit()
+
+def calibrate_esc():
+    """ESC calibration routine"""
+    print("\n🛠 ESC Calibration Mode")
+    for i, pwm in enumerate(pwms):
+        print(f"Calibrating Motor {i+1}...")
+        pwm.ChangeDutyCycle(100)
+        input("Disconnect battery, then press Enter...")
+        input("Connect battery, wait for beeps, then press Enter...")
+        pwm.ChangeDutyCycle(0)
+        time.sleep(5)
+        print(f"Motor {i+1} calibrated!")
+    print("✅ All ESCs calibrated\n")
+
+def test_motor(motor_id, duration=3):
+    """Test individual motor"""
+    print(f"\nTesting Motor {motor_id+1}...")
+    pwms[motor_id].ChangeDutyCycle(TEST_THROTTLE)
+    time.sleep(duration)
+    pwms[motor_id].ChangeDutyCycle(0)
+    print(f"Motor {motor_id+1} test complete")
+
+def test_all_motors(duration=3):
+    """Test all motors simultaneously"""
+    print("\n🌀 Testing ALL Motors...")
+    for pwm in pwms:
+        pwm.ChangeDutyCycle(TEST_THROTTLE)
+    time.sleep(duration)
+    for pwm in pwms:
+        pwm.ChangeDutyCycle(0)
+    print("All motors test complete")
+
+try:
+    print("\n🔧 Motor Diagnostic Menu:")
+    print("1-4: Test individual motors")
+    print("R1: Test all motors together")
+    print("Share: Calibrate ESCs")
+    print("PS: Exit\n")
+
+    while True:
+        pygame.event.pump()
+
+        # Individual motor tests
+        if controller.get_button(0): test_motor(0)  # X (Motor1)
+        if controller.get_button(1): test_motor(1)  # O (Motor2)
+        if controller.get_button(2): test_motor(2)  # △ (Motor3)
+        if controller.get_button(3): test_motor(3)  # □ (Motor4)
+
+        # All motors test
+        if controller.get_button(5):  # R1
+            test_all_motors()
+            time.sleep(1)  # Debounce
+
+        # ESC calibration
+        if controller.get_button(8):  # Share
+            calibrate_esc()
+
+        # Exit
+        if controller.get_button(10):  # PS
+            break
+
+        time.sleep(0.1)
+
+except KeyboardInterrupt:
+    print("\nShutting down...")
+finally:
+    for pwm in pwms:
+        pwm.ChangeDutyCycle(0)
+    time.sleep(1)
+    for pwm in pwms:
+        pwm.stop()
+    GPIO.cleanup()
+    print("🔴 System OFF")
